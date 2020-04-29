@@ -1,6 +1,9 @@
-# 每周总结可以写在这里
+# 第三周（4.20 - 4.26）
 
-## Expressions
++ 重学 JavaScript | 表达式、类型转换
++ 重学 JavaScript | 语句、对象
+
+## 一 .Expressions
 
 ### Grammar
 
@@ -45,7 +48,7 @@ a + b = c;
   + await a
 
 
-## Statement
+## 二. Statement
 
 ### 简单语句
 
@@ -106,7 +109,7 @@ var o = function* foo() {};
 + LexicalDeclaration
 
 
-## Object（面向对象与 JavaScript 中的对象）
+## 三.Object（面向对象与 JavaScript 中的对象）
 
 ### 1.注意一个概念
 + 如果我们讲对象这个概念，它就不是一个数据存储的工具。
