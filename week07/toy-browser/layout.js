@@ -111,10 +111,10 @@ function layout (element) {
 
   let isAutoMainSize = false;
   if (!style[mainSize]) {
-    eleStyle[mainSize] = 0;
+    elementStyle[mainSize] = 0;
     for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-
+      let item = items[i];
+      let itemStyle = getStyle(item);
       if(itemStyle[mainSize] !== null || itemStyle[mainSize] !== (void 0)){
         elementStyle[mainSize] = elementStyle[mainSize] + itemStyle[mainSize];
       }
@@ -130,11 +130,11 @@ function layout (element) {
   let crossSpace = 0;
 
   for(let i = 0; i < items.length; i++) {
-    const item = items[i]
-    const itemStyle = getStyle(item)
-    if (itemStyle[mainSize] === null) {
+    let item = items[i];
+    let itemStyle = getStyle(item);
+
+    if (itemStyle[mainSize] === null)
       itemStyle[mainSize] = 0;
-    }
 
     if (itemStyle.flex) {
       flexLine.push(item)
@@ -145,15 +145,15 @@ function layout (element) {
       }
       flexLine.push(item)
     } else {
-      if (itemStyle[mainSize] > style[mainSize]) itemStyle[mainSize] = style[mainSize]
+      if (itemStyle[mainSize] > style[mainSize])
+        itemStyle[mainSize] = style[mainSize]
 
       if (itemStyle[mainSize] > mainSpace) {
         flexLine.mainSpace = mainSpace;
         flexLine.crossSpace = crossSpace;
 
-        flexLine = [];
+        flexLine = [item];
         flexLines.push(flexLine);
-        flexLines.push(item);
 
         mainSpace = style[mainSize];
         crossSpace = 0;
@@ -169,6 +169,7 @@ function layout (element) {
   }
 
   flexLine.mainSpace = mainSpace;
+
   if (style.flexWrap === 'nowrap' || isAutoMainSize) {
     flexLine.crossSpace = (style[crossSize] !== (void 0)) ? style[crossSize] : crossSpace;
   } else {
@@ -176,28 +177,31 @@ function layout (element) {
   }
 
   if (mainSpace < 0) {
-    const scale = style[mainSize] / (style[mainSize] - mainSpace);
-    let curMain = mainBase;
+    let scale = style[mainSize] / (style[mainSize] - mainSpace);
+    let currentMain = mainBase;
+
     for (let i = 0; i < items.length; i ++) {
-      const item = items[i]
-      const itemStyle = getStyle(item);
-      if (item.flex) {
+      let item = items[i]
+      let itemStyle = getStyle(item);
+
+      if (itemStyle.flex) {
         item[mainSize] = 0;
       }
 
       itemStyle[mainSize] *= scale;
 
-      itemStyle[mainStart] = curMain;
+      itemStyle[mainStart] = currentMain;
       itemStyle[mainEnd] = itemStyle[mainStart] + mainSign * itemStyle[mainSize];
-      curMain = itemStyle[mainEnd];
+      currentMain = itemStyle[mainEnd];
     }
   } else {
-    flexLines.forEach(flexLine => {
-      let mainSpace = flexLine.mainSpace;
+    flexLines.forEach(items => {
+      let mainSpace = items.mainSpace;
       let flexTotal = 0;
-      for (let i = 0; i < flexLine.length; i ++) {
-        const item = flexLine[i]
+      for (let i = 0; i < items.length; i ++) {
+        const item = items[i]
         const itemStyle = getStyle(item);
+
         if (itemStyle.flex !== null && itemStyle.flex !== (void 0)) {
           flexTotal += itemStyle.flex;
           continue;
@@ -205,67 +209,58 @@ function layout (element) {
       }
 
       if (flexTotal > 0) {
-        let curMain = mainBase;
-        for (let i = 0; i < flexLine.length; i ++) {
-          const item = flexLine[i]
+        let currentMain = mainBase;
+        for (let i = 0; i < items.length; i ++) {
+          const item = items[i];
           const itemStyle = getStyle(item);
+
           if (itemStyle.flex) {
             itemStyle[mainSize] = (mainSpace / flexTotal) * itemStyle.flex;
           }
     
-          itemStyle[mainStart] = curMain;
+          itemStyle[mainStart] = currentMain;
           itemStyle[mainEnd] = itemStyle[mainStart] + mainSign * itemStyle[mainSize];
-          curMain = itemStyle[mainEnd];
+          currentMain = itemStyle[mainEnd];
         }
       } else {
-        let curMain = mainBase;
+        let currentMain = 0;
         let step = 0;
-        switch (style.justifyContent) {
-          case 'flex-start': {
-            curMain = mainBase;
-            step = 0;
-            break;
-          }
-          case 'flex-end': {
-            curMain = mainSpace * mainSign + mainBase;
-            step = 0;
-            break;
-          }
-          case 'center': {
-            curMain = mainSpace / 2 * mainSign + mainBase;
-            step = 0;
-            break;
-          }
-          case 'space-between': {
-            curMain = mainBase;
-            step = mainSpace / (flexLine.length - 1);
-            break;
-          }
-          case 'space-around': {
-            step = mainSpace / flexLine.length * mainSign;
-            curMain = step / 2  + mainBase;
-            break;
-          }
-          default: break;
-        }
+				if (style.justifyContent === 'flex-start') {
+					currentMain = mainBase
+					step = 0
+				} else if (style.justifyContent === 'flex-end') {
+					currentMain = mainSpace * mainSign + mainBase
+					step = 0
+				} else if (style.justifyContent === 'center') {
+					currentMain = mainSpace / 2 * mainSign + mainBase
+					step = 0
+				} else if (style.justifyContent === 'space-between') {
+					currentMain = mainBase;
+					step = mainSpace / (items.length - 1) * mainSign
+				} else if (style.justifyContent === 'space-around') {
+					currentMain = step / 2 + mainBase
+					step = mainSpace / items.length * mainSign
+				}
 
-        for (let i = 0; i < flexLines.length; i ++) {
-          const item = flexLine[i]
+        for (let i = 0; i < items.length; i ++) {
+          const item = items[i];
           const itemStyle = getStyle(item);
     
-          itemStyle[mainStart] = curMain;
+          itemStyle[mainStart] = currentMain;
           itemStyle[mainEnd] = itemStyle[mainStart] + mainSign * itemStyle[mainSize];
-          curMain = itemStyle[mainEnd] + step;
+          currentMain = itemStyle[mainEnd] + step;
         }
       }
     })
   }
 
+  let crossSpace = 0;
+
   if (!style[crossSize]) {
     crossSpace = 0;
-    eleStyle[crossSize] = 0;
+    elementStyle[crossSize] = 0;
     for (let i = 0; i < flexLines.length; i ++) {
-      eleStyle[crossSize] += flexLines[i].crossSpace;
+      elementStyle[crossSize] += flexLines[i].crossSpace;
     }
   } else {
     crossSpace = style[crossSize]
@@ -283,84 +278,86 @@ function layout (element) {
   }
 
   let lineSize = style[crossSize] / flexLines.length;
+  
   let step = 0;
 
   switch (style.alignContent) {
-    case 'flex-start': {
+    case 'flex-start':
       crossBase += 0;
       step = 0;
       break;
-    }
-    case 'flex-end': {
+    
+    case 'flex-end':
       crossBase += crossSign * crossSpace;
       step = 0;
       break;
-    }
-    case 'center': {
+    
+    case 'center':
       crossBase += crossSign * crossSpace / 2;
       step = 0;
       break;
-    }
-    case 'space-between': {
+    
+    case 'space-between': 
       crossBase += 0;
       step = crossSpace / (flexLines.length - 1);
       break;
-    }
-    case 'space-around': {
+    
+    case 'space-around':
       step = crossSpace / flexLines.length;
       crossBase += crossSign * step / 2;
       break;
-    }
-    case 'stretch': {
+    
+    case 'stretch':
       step = 0;
       crossBase += 0;
       break;
-    }
+    default:
+      break;
   }
 
-  flexLines.forEach(flexLine => {
+  flexLines.forEach(items => {
     let lineCrossSize = style.alignContent === 'stretch' ?
-    flexLine.crossSpace + crossSpace / flexLines.length :
-    flexLine.crossSpace;
+    items.crossSpace + crossSpace / flexLines.length :
+    items.crossSpace;
 
-    for(let i = 0; i < flexLine.length; i ++) {
-      const item = flexLine[i]
-      const itemStyle = getStyle(item);
+    for(let i = 0; i < items.length; i ++) {
+      let item = items[i];
+      let itemStyle = getStyle(item);
 
-      const align = itemStyle.alignSelf || style.alignItems;
+      let align = itemStyle.alignSelf || style.alignItems;
 
-      if (itemStyle[crossSize] === null) {
+      if (item === null) {
         itemStyle[crossSize] = align === 'stretch' ? lineCrossSize : 0;
       }
 
       switch (align) {
-        case 'flex-start': {
+        case 'flex-start':
           itemStyle[crossStart] = crossBase;
           itemStyle[crossEnd] = itemStyle[crossStart] + crossSign * itemStyle[crossSize]
           break;
-        }
-        case 'flex-end': {
+
+        case 'flex-end':
           itemStyle[crossEnd] = crossBase + crossSign * lineCrossSize;
           itemStyle[crossStart] = itemStyle[crossEnd] - crossSign * itemStyle[crossSize]
           break;
-        }
-        case 'center': {
+        
+        case 'center':
           itemStyle[crossStart] = crossBase + crossSign * (lineCrossSize - itemStyle[crossSize]) / 2;
           itemStyle[crossEnd] = itemStyle[crossStart] + crossSign * itemStyle[crossSize]
           break;
-        }
-        case 'stretch': {
-          itemStyle[crossStart] = crossBase;
-          itemStyle[crossEnd] = itemStyle[crossStart] + crossSign * (itemStyle[crossSize] !== null && itemStyle[crossSize] !== (void 0) ? itemStyle[crossSize] : lineCrossSize)
 
+        case 'stretch':
+          itemStyle[crossStart] = crossBase;
+          itemStyle[crossEnd] = crossBase + crossSign * ((itemStyle[crossSize] !== null && itemStyle[crossSize] !== (void 0)) ? itemStyle[crossSize] : lineCrossSize);
           itemStyle[crossSize] = crossSign * (itemStyle[crossEnd] - itemStyle[crossStart])
           break;
-        }
-        default: break;
+
+        default:
+          break;
       }
     }
     crossBase += crossSign * (lineCrossSize + step);
   })
 }
 
-module.exports.layout = layout;
+module.exports = layout;

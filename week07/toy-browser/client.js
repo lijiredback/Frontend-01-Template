@@ -1,5 +1,8 @@
 const net = require('net');
+const images = require('images');
+
 const parser = require('./parser');
+const render = require('./render');
 
 class Request {
 	// method, url = host + port + path
@@ -44,7 +47,7 @@ ${this.bodyText};`;
 			connection.on('data', (data) => {
         parser.receive(data.toString());
         if (parser.isFinished) {
-          resolve(parser.response)
+          resolve(parser.response);
         }
         connection.end();
 			});
@@ -68,6 +71,7 @@ class ResponseParser {
 		this.WAITING_HEADER_LINE_END = 5;
 		this.WAITING_HEADER_BLOCK_END = 6;
 		this.WAITING_BODY = 7;
+
 		this.current = this.WAITING_STATUS_LINE;
 		this.statusLine = '';
 		this.headers = {};
@@ -96,6 +100,8 @@ class ResponseParser {
 		if (this.current === this.WAITING_STATUS_LINE) {
 			if (char === '\r') {
 				this.current = this.WAITING_STATUS_LINE_END;
+			} else if (char === '\n') {
+				this.current = this.WAITING_HEADER_NAME;
 			} else {
 				this.statusLine += char;
 			}
@@ -108,8 +114,9 @@ class ResponseParser {
 				this.current = this.WAITING_HEADER_SPACE;
 			} else if (char === '\r') {
 				this.current = this.WAITING_HEADER_BLOCK_END;
-        // if (this.headers)
-        this.bodyParser = new TrunkedBodyParser();
+        if (this.headers['Transfer-Encoding'] === 'chunked') {
+					this.bodyParser = new TrunkedBodyParser();
+				}
 			} else {
 				this.headerName += char;
 			}
@@ -121,7 +128,8 @@ class ResponseParser {
 			if (char === '\r') {
 				this.current = this.WAITING_HEADER_LINE_END;
 				this.headers[this.headerName] = this.headerValue;
-				this.headerName = this.headerValue = '';
+				this.headerName = '';
+				this.headerValue = '';
 			} else {
 				this.headerValue += char;
 			}
@@ -145,7 +153,8 @@ class TrunkedBodyParser {
     this.WAITING_LENGTH_LINE_END = 1;
     this.READING_TRUNK = 2;
     this.WAITING_NEW_LINE = 3;
-    this.WAITING_NEW_LINE_END = 4;
+		this.WAITING_NEW_LINE_END = 4;
+		
     this.length = 0;
     this.content = [];
     this.isFinished = false;
@@ -156,14 +165,12 @@ class TrunkedBodyParser {
     if (this.current === this.WAITING_LENGTH) {
       if (char === '\r') {
         if (this.length === 0) {
-          console.log(this.content)
-          console.log('\\\\\\\\\\\\\\\\')
           this.isFinished = true;
         }
 				this.current = this.WAITING_LENGTH_LINE_END;
 			} else {
-        this.length *= 10;
-        this.length += char.charCodeAt(0) - '0'.charCodeAt(0);
+        this.length *= 16;
+        this.length += parseInt(char, 16);
 			}
     } else if (this.current === this.WAITING_LENGTH_LINE_END) {
       if (char === '\n') {
@@ -189,15 +196,16 @@ class TrunkedBodyParser {
 
 void (async function() {
 	let request = new Request({
-		method: 'POST',
+		method: 'GET',
 		host: '127.0.0.1',
 		port: '8088',
 		path: '/',
 		headers: {
-			'X-Foo': 'custormed',
+			'Content-Type': 'application/x-www-form-urlencoded',
+			'X-Foo2': 'custormed',
 		},
 		body: {
-			name: 'liji',
+			name: 'tom',
 		},
 	});
   let response = await request.send();
@@ -205,4 +213,8 @@ void (async function() {
 	
 	let dom = parser.parserHTML(response.body);
 	console.log(JSON.stringify(dom, null, '  '));
+
+	let viewport = images(800, 600);
+	render(viewport, dom);
+	viewport.save('viewport.jpg');
 })();
