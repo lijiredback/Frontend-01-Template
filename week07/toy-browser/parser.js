@@ -1,4 +1,5 @@
 let css = require('css');
+let layout = require('./layout');
 
 const EOF = Symbol('EOF');
 let currentToken = null;
@@ -37,9 +38,9 @@ function specificity(selector) {
   let p = [0, 0, 0, 0];
   let selectorParts = selector.split(' ');
   for(let part of selectorParts) {
-    if(part.charAt(0) == '#') {
+    if(part.charAt() === '#') {
       p[1] += 1;
-    } else if(part.charAt(0) == '.') {
+    } else if(part.charAt() === '.') {
       p[2] += 1;
     } else {
       p[3] += 1;
@@ -114,8 +115,8 @@ function emit(token) {
 
     element.tagName = token.tagName;
 
-    for(p in token) {
-      if(p != 'type' && p != 'tagName') {
+    for(let p in token) {
+      if(p !== 'type' && p !== 'tagName') {
         element.attributes.push({
           name: p,
           value: token[p]
@@ -132,11 +133,11 @@ function emit(token) {
     }
     currentTextNode = null;
 
-  } else if(token.type == 'endTag') {
-    if(top.tagName != token.tagName) {
+  } else if(token.type === 'endTag') {
+    if(top.tagName !== token.tagName) {
       throw new Error('Tag start end doesn\'t match!');
     } else {
-      if(top.tagName == 'style') {
+      if(top.tagName === 'style') {
         addCSSRules(top.children[0].content);
       }
       stack.pop();
@@ -155,13 +156,13 @@ function emit(token) {
 }
 
 function data(c) {
-  if(c == '<') {
+  if(c === '<') {
     return tagOpen;
-  } else if(c == EOF) {
+  } else if(c === EOF) {
     emit({
       type: 'EOF'
     })
-    return ;
+    return;
   } else {
     emit({
       type: 'text',
@@ -172,7 +173,7 @@ function data(c) {
 }
 
 function tagOpen(c) {
-  if(c == '/') {
+  if(c === '/') {
     return endTagOpen;
   } else if(c.match(/^[a-zA-Z]$/)) {
     currentToken = {
@@ -185,35 +186,19 @@ function tagOpen(c) {
       type: text,
       content: c
     })
-    return ;
-  }
-}
-
-function endTagOpen(c) {
-  if(c.match(/^[a-zA-Z]$/)) {
-    currentToken = {
-      type: 'endTag',
-      tagName: ''
-    }
-    return tagName(c)
-  } else if(c == '>') {
-
-  } else if(c == EOF) {
-
-  } else {
-
+    return;
   }
 }
 
 function tagName(c) {
   if(c.match(/^[\t\n\f ]$/)) {
     return beforeAttributeName;
-  } else if(c == '/') {
+  } else if(c === '/') {
     return selfClosingStartTag;
   } else if(c.match(/^[a-zA-Z]$/)) {
     currentToken.tagName += c;
     return tagName;
-  } else if(c == '>') {
+  } else if(c === '>') {
     emit(currentToken);
     return data;
   } else {
@@ -223,12 +208,11 @@ function tagName(c) {
 }
 
 function beforeAttributeName(c) {
-  if(c.match(/^[\t\n\f ]$/)) {
+  if (c.match(/^[\t\n\f ]$/)) {
     return beforeAttributeName;
-  } else if(c == '/' || c == '>' || c == EOF) {
+  } else if (c === '/' || c === '>' || c === EOF) {
     return afterAttributeName(c);
-  } else if(c == '=') {
-
+  } else if(c === '=') {
     // 抛错
     // return attributeName;
   } else {
@@ -241,13 +225,13 @@ function beforeAttributeName(c) {
 }
 
 function attributeName(c) {
-  if(c.match(/^[\t\n\f ]$/) || c == '/' || c == '>' || c == EOF) {
+  if(c.match(/^[\t\n\f]$/) || c === '/' || c === '>' || c === EOF) {
     return afterAttributeName(c);
-  } else if(c == '=') {
+  } else if(c === '=') {
     return beforeAttributeValue;
-  } else if(c == '\u0000') {
+  } else if(c === '\u0000') {
 
-  } else if(c == '\'' || c == '"' || c == '<') {
+  } else if(c === '\'' || c === '\"' || c == '<') {
 
   } else {
     currentAttibute.name += c;
@@ -255,14 +239,15 @@ function attributeName(c) {
   }
 }
 
+
 function afterAttributeName(c) {
-  if(c.match(/^[\t\n\f ]^/)) {
+  if(c.match(/^[\t\n\f ]$/)) {
     return afterAttributeName;
-  } else if(c == '/') {
+  } else if(c === '/') {
     return selfClosingStartTag;
-  } else if(c == '=') {
+  } else if(c === '=') {
     return beforeAttributeValue;
-  } else if(c == '>') {
+  } else if(c === '>') {
     currentToken[currentAttibute.name] = currentAttibute.value;
     emit(currentToken);
     return data;
@@ -279,26 +264,26 @@ function afterAttributeName(c) {
 }
 
 function beforeAttributeValue(c) {
-  if(c.match(/^[\t\n\f ]$/) || c == '/' || c == '>' || c == EOF) {
+  if(c.match(/^[\t\n\f ]$/) || c === '/' || c === '>' || c === EOF) {
     return beforeAttributeValue;
-  } else if(c == '\"') {
+  } else if(c === '\"') {
     return doubleQuotedAttributeValue;
-  } else if(c == '\'') {
+  } else if(c === '\'') {
     return singleQuotedAttributeValue;
-  } else if(c == '>') {
-
+  } else if(c === '>') {
+    // ..
   } else {
     return unquotedAttributeValue(c);
   }
 }
 
 function doubleQuotedAttributeValue(c) {
-  if(c == '\"') {
+  if(c === '\"') {
     currentToken[currentAttibute.name] = currentAttibute.value;
     return afterQuotedAttributeValue;
-  } else if(c == '\u0000') {
+  } else if(c === '\u0000') {
 
-  } else if(c == EOF) {
+  } else if(c === EOF) {
 
   } else {
     currentAttibute.value += c;
@@ -307,7 +292,7 @@ function doubleQuotedAttributeValue(c) {
 }
 
 function singleQuotedAttributeValue(c) {
-  if(c == '\'') {
+  if(c === '\'') {
     currentToken[currentAttibute.name] = currentAttibute.value;
     return afterQuotedAttributeValue;
   } else if(c == '\u0000') {
@@ -323,13 +308,13 @@ function singleQuotedAttributeValue(c) {
 function afterQuotedAttributeValue(c) {
   if(c.match(/^[\t\n\f ]$/)) {
     return beforeAttributeName;
-  } else if(c == '/') {
+  } else if(c === '/') {
     return selfClosingStartTag;
-  } else if(c == '>') {
+  } else if(c === '>') {
     currentToken[currentAttibute.name] = currentAttibute.value;
     emit(currentToken);
     return data;
-  } else if(c == EOF) {
+  } else if(c === EOF) {
 
   } else {
     currentAttibute.value += c;
@@ -341,18 +326,18 @@ function unquotedAttributeValue(c) {
   if(c.match(/^[\t\n\f ]$/)) {
     currentToken[currentAttibute.name] = currentAttibute.value;
     return beforeAttributeName;
-  } else if(c == '/') {
+  } else if(c === '/') {
     currentToken[currentAttibute.name] = currentAttibute.value;
     return selfClosingStartTag;
-  } else if(c == '>') {
+  } else if(c === '>') {
     currentToken[currentAttibute.name] = currentAttibute.value;
     emit(currentToken);
     return data;
   } else if(c == '\u0000') {
 
-  } else if(c == '"' || c == '\'' || c == '<' || c == '=' || c == '`'){
+  } else if(c === '\"' || c === '\'' || c === '<' || c === '=' || c === '`'){
 
-  } else if(c == EOF) {
+  } else if(c === EOF) {
 
   } else {
     currentAttibute.value += c;
@@ -361,16 +346,33 @@ function unquotedAttributeValue(c) {
 }
 
 function selfClosingStartTag(c) {
-  if(c == '>') {
+  if(c === '>') {
     currentToken.isSelfClosing = true;
     emit(currentToken);
     return data;
-  } else if(c == EOF) {
+  } else if(c === EOF) {
 
   } else {
 
   }
 }
+
+function endTagOpen(c) {
+  if(c.match(/^[a-zA-Z]$/)) {
+    currentToken = {
+      type: 'endTag',
+      tagName: ''
+    }
+    return tagName(c)
+  } else if(c === '>') {
+
+  } else if(c === EOF) {
+
+  } else {
+
+  }
+}
+
 
 module.exports.parserHTML = function parsrHTML(html) {
   let state = data;
