@@ -1,46 +1,50 @@
-let css = require('css');
-let layout = require('./layout');
+const css = require('css');
 
-const EOF = Symbol('EOF');
+const EOF = Symbol('EOF'); // EOF: End Of File
+
+const layout = require('./layout');
+
 let currentToken = null;
-let currentAttibute = null;
-let currentTextNode = null;
+let currentAttribute = null;
 
 let stack = [{type: 'document', children: []}];
-
+let currentTextNode = null;
 
 let rules = [];
 function addCSSRules(text) {
-  let ast = css.parse(text);
-  // console.log(JSON.stringify(ast, null, "  "));
+  var ast = css.parse(text);
   rules.push(...ast.stylesheet.rules);
 }
 
 function match(element, selector) {
-  if(!selector || !element.attributes) return false;
+  if (!selector || !element.attributes)
+    return false;
 
-  let attr;
-  if(selector.charAt() == '#') {
-    attr = element.attributes.filter(attr => attr.name === 'id')[0];
-    if(attr && attr.value === selector.replace('#', '')) return true;
-  } else if(selector.charAt() === '.') {
-    attr = element.attributes.filter(attr => attr.name === 'class')[0];
-    if(attr && attr.value === selector.replace('.', '')) return true;
-  } else {
-    if(element.tagName === selector) 
+  if (selector.charAt(0) === '#') {
+    var attr = element.attributes.filter(attr => attr.name === 'id')[0];
+    if (attr && attr.value === selector.replace('#', '')) {
       return true;
+    }
+  } else if (selector.charAt(0) === '.') {
+    var attr = element.attributes.filter(attr => attr.name === 'class')[0];
+    if (attr && attr.value === selector.replace('.', '')) {
+      return true;
+    }
+  } else {
+    if (element.tagName === selector) {
+      return true;
+    }
   }
-
   return false;
 }
 
 function specificity(selector) {
-  let p = [0, 0, 0, 0];
-  let selectorParts = selector.split(' ');
-  for(let part of selectorParts) {
-    if(part.charAt() === '#') {
+  var p = [0, 0, 0, 0];
+  var selectorParts = selector.split(' ');
+  for (var part of selectorParts) {
+    if (part.charAt(0) === '#') {
       p[1] += 1;
-    } else if(part.charAt() === '.') {
+    } else if (part.charAt(0) === '.') {
       p[2] += 1;
     } else {
       p[3] += 1;
@@ -50,53 +54,58 @@ function specificity(selector) {
 }
 
 function compare(sp1, sp2) {
-  if(sp1[0] - sp2[0]) 
+  if (sp1[0] - sp2[0]) {
     return sp1[0] - sp2[0];
-  if(sp1[1] - sp2[1]) 
+  }
+  if (sp1[1] - sp2[1]) {
     return sp1[1] - sp2[1];
-  if(sp1[2] - sp2[2]) 
+  }
+  if (sp1[2] - sp2[2]) {
     return sp1[2] - sp2[2];
-
+  }
   return sp1[3] - sp2[3];
 }
 
 function computeCSS(element) {
-  let elements = stack.slice().reverse();
-  if(!element.computedStyle) {
+  var elements = stack.slice().reverse();
+  if (!element.computedStyle) {
     element.computedStyle = {};
   }
 
-  for(let rule of rules) {
-    let selectorParts = rule.selectors[0].split(' ').reverse();
+  for (let rule of rules) {
+    var selectorParts = rule.selectors[0].split(' ').reverse();
 
-    if(!match(element, selectorParts[0])) continue;
+    if(!match(element, selectorParts[0])) {
+      continue;
+    }
 
     let matched = false;
 
-    let j = 1;
-    for(let i = 0; i < elements.length; i++) {
-      if(match(elements[i]), selectorParts[j]) {
+    var j = 1;
+    for (var i = 0; i < elements.length; i++) {
+      if (match(elements[i], selectorParts[j])) {
         j++;
       }
     }
-
-    if(j >= selectorParts.length)
+    if (j >= selectorParts.length) {
       matched = true;
+    }
 
-    if(matched) {
-      let sp = specificity(rule.selectors[0]);
-      let computedStyle = element.computedStyle;
-      for(let declaration of rule.declarations) {
-        if(!computedStyle[declaration.property]) {
+    if (matched) {
+      var sp = specificity(rule.selectors[0]);
+      var computedStyle = element.computedStyle;
+      for (var declaration of rule.declarations) {
+        if (!computedStyle[declaration.property]) {
           computedStyle[declaration.property] = {};
         }
 
-        if(!computedStyle[declaration.property].specificity) {
+        if (!computedStyle[declaration.property].specificity) {
           computedStyle[declaration.property].value = declaration.value;
           computedStyle[declaration.property].specificity = sp;
-        } else if(compare(computedStyle[declaration.property].specificity, sp) < 0) {
-          computedStyle[declaration.property].value = declaration.value;
-          computedStyle[declaration.property].specificity = sp;
+        } else if (compare(computedStyle[declaration.property].specificity, sp) < 0) {
+          for (var k = 0; k < 4; k++) {
+            computedStyle[declaration.property][declaration.value][k] += sp[k];
+          }
         }
       }
     }
@@ -106,7 +115,7 @@ function computeCSS(element) {
 function emit(token) {
   let top = stack[stack.length - 1];
 
-  if(token.type == 'startTag') {
+  if (token.type === 'startTag') {
     let element = {
       type: 'element',
       children: [],
@@ -115,36 +124,38 @@ function emit(token) {
 
     element.tagName = token.tagName;
 
-    for(let p in token) {
-      if(p !== 'type' && p !== 'tagName') {
+    for (let p in token) {
+      if (p !== 'type' && p !== 'tagName') {
         element.attributes.push({
           name: p,
           value: token[p]
         })
       }
     }
+
     computeCSS(element);
 
     top.children.push(element);
-    // element.parent = top;
 
-    if(!token.isSelfClosing) {
+    if (!token.isSelfClosing) {
       stack.push(element);
     }
+
     currentTextNode = null;
 
-  } else if(token.type === 'endTag') {
-    if(top.tagName !== token.tagName) {
-      throw new Error('Tag start end doesn\'t match!');
+  } else if (token.type === 'endTag') {
+    if (top.tagName !== token.tagName) {
+      throw new Error("Tag start end doesn't match!");
     } else {
-      if(top.tagName === 'style') {
+      if (top.tagName === 'style') {
         addCSSRules(top.children[0].content);
       }
       stack.pop();
     }
+    layout(top);
     currentTextNode = null;
-  } else if(token.type == 'text'){
-    if(currentTextNode == null) {
+  } else if (token.type === 'text') {
+    if (currentTextNode === null) {
       currentTextNode = {
         type: 'text',
         content: ''
@@ -155,14 +166,15 @@ function emit(token) {
   }
 }
 
+
 function data(c) {
-  if(c === '<') {
+  if (c === '<') {
     return tagOpen;
-  } else if(c === EOF) {
+  } else if (c === EOF) {
     emit({
       type: 'EOF'
     })
-    return;
+    return ;
   } else {
     emit({
       type: 'text',
@@ -173,9 +185,9 @@ function data(c) {
 }
 
 function tagOpen(c) {
-  if(c === '/') {
+  if (c === '/') {
     return endTagOpen;
-  } else if(c.match(/^[a-zA-Z]$/)) {
+  } else if (c.match(/^[a-zA-z]$/)) {
     currentToken = {
       type: 'startTag',
       tagName: ''
@@ -183,7 +195,7 @@ function tagOpen(c) {
     return tagName(c);
   } else {
     emit({
-      type: text,
+      type: 'text',
       content: c
     })
     return;
@@ -191,14 +203,14 @@ function tagOpen(c) {
 }
 
 function tagName(c) {
-  if(c.match(/^[\t\n\f ]$/)) {
+  if (c.match(/^[\t\n\f ]$/)) {
     return beforeAttributeName;
-  } else if(c === '/') {
+  } else if (c === '/') {
     return selfClosingStartTag;
-  } else if(c.match(/^[a-zA-Z]$/)) {
+  } else if (c.match(/^[a-zA-Z]$/)) {
     currentToken.tagName += c;
     return tagName;
-  } else if(c === '>') {
+  } else if (c === '>') {
     emit(currentToken);
     return data;
   } else {
@@ -212,11 +224,10 @@ function beforeAttributeName(c) {
     return beforeAttributeName;
   } else if (c === '/' || c === '>' || c === EOF) {
     return afterAttributeName(c);
-  } else if(c === '=') {
-    // 抛错
-    // return attributeName;
+  } else if (c === '=') {
+    
   } else {
-    currentAttibute = {
+    currentAttribute = {
       name: '',
       value: ''
     }
@@ -225,132 +236,134 @@ function beforeAttributeName(c) {
 }
 
 function attributeName(c) {
-  if(c.match(/^[\t\n\f]$/) || c === '/' || c === '>' || c === EOF) {
+  if (c.match(/^[\t\n\f ]$/) || c === '/' || c === '>' || c === EOF) {
     return afterAttributeName(c);
-  } else if(c === '=') {
+  } else if (c === '=') {
     return beforeAttributeValue;
-  } else if(c === '\u0000') {
+  } else if (c === '\u0000') {
 
-  } else if(c === '\'' || c === '\"' || c == '<') {
+  } else if (c === '"' || c === '\'' || c === '<') {
 
   } else {
-    currentAttibute.name += c;
+    currentAttribute.name += c;
     return attributeName;
   }
 }
 
 
-function afterAttributeName(c) {
-  if(c.match(/^[\t\n\f ]$/)) {
-    return afterAttributeName;
-  } else if(c === '/') {
-    return selfClosingStartTag;
-  } else if(c === '=') {
-    return beforeAttributeValue;
-  } else if(c === '>') {
-    currentToken[currentAttibute.name] = currentAttibute.value;
-    emit(currentToken);
-    return data;
-  } else if(c == EOF) {
-
-  } else {
-    currentToken[currentAttibute.name] = currentAttibute.value;
-    currentAttibute = {
-      name: '',
-      value: ''
-    }
-    return attributeName(c);
-  }
-}
-
 function beforeAttributeValue(c) {
-  if(c.match(/^[\t\n\f ]$/) || c === '/' || c === '>' || c === EOF) {
+  if (c.match(/^[\t\n\f ]$/) || c === '//' || c === '>' || c === EOF) {
     return beforeAttributeValue;
-  } else if(c === '\"') {
+  } else if (c === '\"') {
     return doubleQuotedAttributeValue;
-  } else if(c === '\'') {
+  } else if (c === '\'') {
     return singleQuotedAttributeValue;
-  } else if(c === '>') {
-    // ..
+  } else if (c === '>') {
+    return data;
   } else {
-    return unquotedAttributeValue(c);
+    return UnquotedAttributeValue(c);
   }
 }
 
 function doubleQuotedAttributeValue(c) {
-  if(c === '\"') {
-    currentToken[currentAttibute.name] = currentAttibute.value;
+  if (c === '\"') {
+    currentToken[currentAttribute.name] = currentAttribute.value;
     return afterQuotedAttributeValue;
-  } else if(c === '\u0000') {
+  } else if (c === '\u0000') {
 
-  } else if(c === EOF) {
+  } else if (c === EOF) {
 
   } else {
-    currentAttibute.value += c;
+    currentAttribute.value += c;
     return doubleQuotedAttributeValue;
   }
 }
 
 function singleQuotedAttributeValue(c) {
-  if(c === '\'') {
-    currentToken[currentAttibute.name] = currentAttibute.value;
+  if (c === '\'') {
+    currentToken[currentAttribute.name] = currentAttribute.value;
     return afterQuotedAttributeValue;
-  } else if(c == '\u0000') {
+  } else if (c === '\u0000') {
 
-  } else if(c == EOF) {
+  } else if (c === EOF) {
 
   } else {
-    currentAttibute.value += c;
+    currentAttribute.value += c;
     return doubleQuotedAttributeValue;
   }
 }
+
+function afterAttributeName(c) {
+  if (c.match(/^[\t\n\f ]$/)) {
+    return afterAttributeName;
+  } else if (c == '/') {
+    return selfClosingStartTag;
+  } else if (c == '=') {
+    return beforeAttributeValue;
+  } else if (c == '>') {
+    currentToken[currentAttribute.name] = currentAttribute.value;
+    emit(currentToken);
+    return data;
+  } else if (c == EOF) {
+
+  } else {
+    currentToken[currentAttribute.name] = currentAttribute.value;
+    currentAttribute = {
+      name: '',
+      value: '',
+    }
+  }
+  return attributeName(c);
+}
+
+
 
 function afterQuotedAttributeValue(c) {
-  if(c.match(/^[\t\n\f ]$/)) {
+  if (c.match(/^[\t\n\f ]$/)) {
     return beforeAttributeName;
-  } else if(c === '/') {
+  } else if (c === '/') {
     return selfClosingStartTag;
-  } else if(c === '>') {
-    currentToken[currentAttibute.name] = currentAttibute.value;
+  } else if (c === '>') {
+    currentToken[currentAttribute.name] = currentAttribute.value;
     emit(currentToken);
     return data;
-  } else if(c === EOF) {
+  } else if (c === EOF) {
 
   } else {
-    currentAttibute.value += c;
+    currentAttribute.value += c;
     return doubleQuotedAttributeValue;
   }
 }
 
-function unquotedAttributeValue(c) {
-  if(c.match(/^[\t\n\f ]$/)) {
-    currentToken[currentAttibute.name] = currentAttibute.value;
+function UnquotedAttributeValue(c) {
+  if (c.match(/^[\t\n\f ]$/)) {
+    currentToken[currentAttribute.name] = currentAttribute.value;
     return beforeAttributeName;
-  } else if(c === '/') {
-    currentToken[currentAttibute.name] = currentAttibute.value;
+  } else if (c === '/') {
+    currentToken[currentAttribute.name] = currentAttribute.value;
     return selfClosingStartTag;
-  } else if(c === '>') {
-    currentToken[currentAttibute.name] = currentAttibute.value;
+  } else if (c === '>') {
+    currentToken[currentAttribute.name] = currentAttribute.value;
     emit(currentToken);
     return data;
-  } else if(c == '\u0000') {
+  } else if (c === '\u0000') {
 
-  } else if(c === '\"' || c === '\'' || c === '<' || c === '=' || c === '`'){
+  } else if (c === '\"' || c === '\'' || c === '<' || c === '=' || c === '`') {
 
-  } else if(c === EOF) {
+  } else if (c === EOF) {
 
   } else {
-    currentAttibute.value += c;
-    return unquotedAttributeValue;
+    currentAttribute.value += c;
+    return UnquotedAttributeValue;
   }
 }
 
 function selfClosingStartTag(c) {
-  if(c === '>') {
+  if (c === '>') {
     currentToken.isSelfClosing = true;
     emit(currentToken);
     return data;
-  } else if(c === EOF) {
+  } else if (c === EOF) {
 
   } else {
 
@@ -358,25 +371,24 @@ function selfClosingStartTag(c) {
 }
 
 function endTagOpen(c) {
-  if(c.match(/^[a-zA-Z]$/)) {
+  if (c.match(/^[a-zA-z]$/)) {
     currentToken = {
       type: 'endTag',
       tagName: ''
     }
-    return tagName(c)
-  } else if(c === '>') {
+    return tagName(c);
+  } else if (c === '>') {
 
-  } else if(c === EOF) {
+  } else if (c === EOF) {
 
   } else {
 
   }
 }
 
-
-module.exports.parserHTML = function parsrHTML(html) {
+module.exports.parseHTML = function parseHTML(html) {
   let state = data;
-  for(let c of html) {
+  for (let c of html) {
     state = state(c);
   }
   state = state(EOF);
