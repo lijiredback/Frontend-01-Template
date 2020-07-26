@@ -1,4 +1,4 @@
-function createElement(Cls, attribute, ...children) {
+function createElement(Cls, attributes, ...children) {
     // console.log(arguments)
 
     let o
@@ -18,9 +18,10 @@ function createElement(Cls, attribute, ...children) {
 
     
 
-    for (let name in attribute) {
+    for (let name in attributes) {
         // o[name] = attribute[name]
-        o.setAttribute(name, attribute[name])
+        // o.setAttribute(name, attributes[name])
+        o[name] = attributes[name]
     }
 
     // console.log(children); // [] [] [] [child, child, child]   JSX 先子后父
@@ -71,10 +72,13 @@ class Wrapper {
     }
 }
 
+/////////////////////////////
 class MyComponent {
     constructor(config) {
         // console.log('config', config)
         this.children = []
+        this.attributes = new Map()
+        this.properties = new Map()
         // this.root = document.createElement('div')
     }
 
@@ -88,7 +92,8 @@ class MyComponent {
 
     setAttribute(name, value) { // attribute
         // console.log(name, value)
-        this.root.setAttribute(name, value)
+        // this.root.setAttribute(name, value)
+        this.attributes.set(name, value)
     }
 
     appendChild(child) {
@@ -96,8 +101,13 @@ class MyComponent {
         this.children.push(child)
     }
 
+    set title(value) {
+        this.properties.set('title', value)
+    }
+
     render() {
         return <article>
+            <h2>{ this.properties.get('title') }</h2>
             <header>I'm a header</header>
             { this.slot }
             <header>I'm a footer</header>
@@ -158,9 +168,11 @@ class MyComponent {
 //     <div></div>
 // </ div>
 
-let component = <MyComponent>
+let component = <MyComponent title="I'm a title">
     <div>text text text</div>
 </MyComponent>
+
+// component.title = "I'm title 2"
 
 // component.id = 'c'
 component.mountTo(document.body)
