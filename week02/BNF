@@ -1,0 +1,43 @@
+// 定义一个数字
+<Number> = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+
+
+// 定义一个十进制数
+<DecimalNumber> = "0" | (("1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9") <Number>*)
+
+// 定义一个加法表达式
+// <AdditiveExpression> = <DecimalNumber> "+" <DecimalNumber>
+// <AdditiveExpression> = <AdditiveExpression> "+" <DecimalNumber>
+<AdditiveExpression> = <DecimalNumber> | <AdditiveExpression> "+" <DecimalNumber>
+
+
+// 定义一个乘法表达式
+<MultiplicativeExpression> = <DecimalNumber> | <MultiplicativeExpression> "*" <DecimalNumber>
+
+
+1 + 2 * 3
+// 左项 1
+// 右项 2 * 3, 2 * 3 就是一个 MultiplicativeExpression
+// 所以，加法表达式可以表示为
+<AdditiveExpression> = <MultiplicativeExpression> | <AdditiveExpression> "+" <MultiplicativeExpression>
+
+
+// 带括号
+<PrimaryExpression> = <DecimalNumber> |
+    "(" <LogicalExpression> ")" 
+
+// 带除法和减法的表达式
+<MultiplicativeExpression> = <PrimaryExpression> | 
+    <MultiplicativeExpression> "*" <PrimaryExpression> |
+    <MultiplicativeExpression> "/" <PrimaryExpression>
+
+
+<AdditiveExpression> = <MultiplicativeExpression> | 
+    <AdditiveExpression> "+" <MultiplicativeExpression> |
+    <AdditiveExpression> "-" <MultiplicativeExpression>
+
+
+// 逻辑运算表达式
+<LogicalExpression> = <AdditiveExpression> | 
+    <LogicalExpression> "||" <AdditiveExpression> |
+    <LogicalExpression> "&&" <AdditiveExpression>
