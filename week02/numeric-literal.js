@@ -1,11 +1,68 @@
 /**
- * 1.
- * NumericLiteral::
+ * 1.NumericLiteral ::
+ * 
  *    DecimalLiteral
- *    BinaryIntegerLiteral
- *    OctalIntegerLiteral
- *    HexIntegerLiteral
+ *    DecimalBigIntegerLiteral（x）
+ *    NonDecimalIntegerLiteral
+ *    NonDecimalIntegerLiteral BigIntLiteralSuffix（x）
  */
+
+
+ /**
+  * 2. NonDecimalIntegerLiteral ::
+  * 
+  *     BinaryIntegerLiteral
+  *     OctalIntegerLiteral
+  *     HexIntegerLiteral
+  */
+
+
+/**
+ *  3. DecimalLiteral ::
+ *    DecimalIntegerLiteral . DecimalDigits(opt)  ExponentPart(opt)
+ *    .DecimalDigits ExponentPart(opt)
+ *    DecimalIntegerLiteral ExponentPart(opt)
+ *    
+ */
+
+
+/**
+ *    4. DecimalIntegerLiteral ::
+ *    
+ *        0
+ *        NonZeroDigit DecimalDigits(opt)
+ */
+
+
+/**
+ *    5. DecimalDigits ::
+ *        
+ *        DecimalDigit
+ *        DecimalDigits DecimalDigit
+ */
+
+
+/**
+ *    6. DecimalDigit :: one of
+ * 
+ *        0 1 2 3 4 5 6 7 8 9
+ */
+
+
+/**
+ *    7. NonZeroDigit :: one of
+ * 
+ *        1 2 3 4 5 6 7 8 9
+ */
+
+
+
+
+
+
+
+
+
 
 /**
  * 2. 十进制
