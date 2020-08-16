@@ -53,8 +53,11 @@ ${this.bodyText}
 			connection.on('data', (data) => {
 				parser.receive(data.toString()) // 注意
 				// resolve(data.toString());
-				console.log(parser.statusLine)
-				console.log(parser.headers)
+				if (parser.isFinished) {
+					resolve(parser.response)
+				}
+				// console.log(parser.statusLine)
+				// console.log(parser.headers)
 				connection.end();
 			});
 
@@ -87,6 +90,21 @@ class ResponseParse {
 		this.headerValue = ''
 		this.bodyParser = null
 	}
+
+	get isFinished() {
+		return this.bodyParser && this.bodyParser.isFinished
+	}
+
+	get response() {
+		this.statusLine.match(/HTTP\/1.1 ([0-9]+) ([\s\S]+)/)
+		return {
+			statusCode: RegExp.$1,
+			statusText: RegExp.$2,
+			headers: this.headers,
+			body: this.bodyParser.content.join('')
+		}
+	}
+
 	receive(string) {
 		for (let i = 0; i < string.length; i++) {
 			this.receiveChar(string.charAt(i))
@@ -162,13 +180,13 @@ class TrunkedBodyParser {
 		this.current = this.WAITING_LENGTH
 	}
 	receiveChar(char) {
-		console.log(JSON.stringify(char), 'char')
-		console.log(this.current);
+		// console.log(JSON.stringify(char), 'char')
+		// console.log(this.current);
 		if (this.current === this.WAITING_LENGTH) {
 			if (char === '\r') {
 				if (this.length === 0) {
-					console.log(this.content)
-					console.log('//////')
+					// console.log(this.content)
+					// console.log('//////')
 					this.isFinished = true
 				}
 				this.current = this.WAITING_LENGTH_LINE_END
@@ -179,7 +197,7 @@ class TrunkedBodyParser {
 				this.length += char.charCodeAt(0) - '0'.charCodeAt(0)
 			}
 		} else if (this.current === this.WAITING_LENGTH_LINE_END) {
-			if (char === '\r') {
+			if (char === '\n') {
 				this.current = this.READING_TRUNK
 			}
 		} else if (this.current === this.READING_TRUNK) {
